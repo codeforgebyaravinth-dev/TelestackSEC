@@ -1,0 +1,27 @@
+{
+  "name": "@telestack/sec",
+  "version": "1.0.0",
+  "description": "Signal-Protocol Compatible E2EE SDK for Node.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "keywords": ["encryption", "e2ee", "signal-protocol", "x3dh"],
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.14.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.5.0",
+    "prisma": "^5.14.0",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.0.0"
+  }
+}
