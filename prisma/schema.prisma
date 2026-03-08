@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  identityKeys  IdentityKey[]
+  preKeys       PreKey[]
+  signedPreKeys SignedPreKey[]
+  sessions      Session[] @relation("UserSessions")
+  peerSessions  Session[] @relation("PeerSessions")
+  messages      Message[] @relation("SentMessages")
+  devices       Device[]
+}
+
+model IdentityKey {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  publicKey       String
+  encryptedPrivateKey String
+  keyVersion      String   @default("1")
+  createdAt       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PreKey {
+  id          String   @id @default(uuid())
+  userId      String
+  keyId       Int
+  publicKey   String
+  encryptedPrivateKey String
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, keyId])
+  @@index([userId, used])
+}
+
+model SignedPreKey {
+  id          String   @id @default(uuid())
+  userId      String
+  keyId       Int
+  publicKey   String
+  signature   String
+  encryptedPrivateKey String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, keyId])
+  @@index([userId, active])
+}
+
+model Session {
+  id              String   @id @default(uuid())
+  userId          String
+  peerId          String
+  rootKey         String
+  chainKey        String
+  sendCount       Int      @default(0)
+  receiveCount    Int      @default(0)
+  skippedKeys     String   @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  expiresAt       DateTime?
+  
+  user            User     @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
+  peer            User     @relation("PeerSessions", fields: [peerId], references: [id], onDelete: Cascade)
+  messages        Message[]
+  
+  @@unique([userId, peerId])
+  @@index([userId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  sessionId   String
+  senderId    String
+  ciphertext  String
+  messageKey  String?
+  counter     Int
+  createdAt   DateTime @default(now())
+  
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId, counter])
+}
+
+model Device {
+  id                  String   @id @default(uuid())
+  userId              String
+  name                String
+  identityPublicKey   String
+  registrationId      Int
+  isPrimary           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preKeyBundles       DevicePreKey[]
+  sentEnvelopes       DeviceEnvelope[] @relation("SentEnvelopes")
+  receivedEnvelopes   DeviceEnvelope[] @relation("ReceivedEnvelopes")
+  
+  @@unique([userId, registrationId])
+  @@index([userId])
+}
+
+model DevicePreKey {
+  id          String   @id @default(uuid())
+  deviceId    String
+  keyId       Int
+  publicKey   String
+  signature   String?
+  isSigned    Boolean  @default(false)
+  used        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  
+  @@unique([deviceId, keyId])
+}
+
+model DeviceEnvelope {
+  id                  String   @id @default(uuid())
+  senderUserId        String
+  senderDeviceId      String
+  recipientUserId     String
+  recipientDeviceId   String
+  ciphertext          String
+  envelopeType        String   @default("message")
+  delivered           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  expiresAt           DateTime?
+  
+  senderDevice        Device   @relation("SentEnvelopes", fields: [senderDeviceId], references: [id], onDelete: Cascade)
+  recipientDevice     Device   @relation("ReceivedEnvelopes", fields: [recipientDeviceId], references: [id], onDelete: Cascade)
+  
+  @@index([recipientDeviceId, delivered])
+}
